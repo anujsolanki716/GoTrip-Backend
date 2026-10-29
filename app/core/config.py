@@ -1,3 +1,4 @@
+
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
@@ -5,7 +6,7 @@ from typing import Annotated, Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-DEV_SECRET = "dev-only-insecure-secret-change-me-0123456789"  
+DEV_SECRET = "dev-only-insecure-secret-change-me-0123456789"
 
 
 def _split_csv(value: object) -> object:
@@ -19,7 +20,9 @@ CsvList = Annotated[list[str], NoDecode]
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     environment: Literal["development", "test", "production"] = "development"
@@ -27,7 +30,9 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     log_level: str = "INFO"
 
-    database_url: str = "postgresql+psycopg://asolanki:gotrip@localhost:5432/gotrip"
+    database_url: str = (
+        "postgresql+psycopg://asolanki:gotrip@localhost:5432/gotrip"
+    )
 
     secret_key: SecretStr = SecretStr(DEV_SECRET)
     access_token_expire_minutes: int = 480
@@ -35,7 +40,9 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     cookie_domain: str | None = None
-    cors_origins: CsvList = Field(default_factory=lambda: ["http://0.0.0.0:5173"])
+    cors_origins: CsvList = Field(
+        default_factory=lambda: ["http://0.0.0.0:5173"]
+    )
     trusted_proxy_count: int = 0
 
     login_max_attempts: int = 5
@@ -61,18 +68,31 @@ class Settings(BaseSettings):
         ]
     )
 
-    email_provider: Literal["console", "smtp", "resend", "disabled"] = "console"
+    # console | smtp | resend | gmail_api | disabled
+    email_provider: Literal[
+        "console", "smtp", "resend", "gmail_api", "disabled"
+    ] = "console"
+
     email_from: str = "GoTrip <no-reply@gotrip.example>"
     enquiry_notification_to: CsvList = Field(
         default_factory=lambda: ["gotrip2626@gmail.com"]
     )
     send_customer_acknowledgement: bool = True
+
+    # Gmail API OAuth credentials
+    gmail_client_id: str | None = None
+    gmail_client_secret: SecretStr | None = None
+    gmail_refresh_token: SecretStr | None = None
+
+    # SMTP settings
     smtp_host: str = "localhost"
     smtp_port: int = 587
     smtp_username: str | None = None
     smtp_password: SecretStr | None = None
     smtp_starttls: bool = True
     smtp_use_ssl: bool = False
+
+    # Resend settings
     resend_api_key: SecretStr | None = None
 
     storage_backend: Literal["local", "s3"] = "local"
@@ -87,7 +107,10 @@ class Settings(BaseSettings):
     max_images_per_car: int = 12
 
     _split = field_validator(
-        "cors_origins", "service_areas", "enquiry_notification_to", mode="before"
+        "cors_origins",
+        "service_areas",
+        "enquiry_notification_to",
+        mode="before",
     )(_split_csv)
 
     @model_validator(mode="after")
@@ -96,12 +119,18 @@ class Settings(BaseSettings):
             secret = self.secret_key.get_secret_value()
             if secret == DEV_SECRET or len(secret) < 32:
                 raise ValueError(
-                    "SECRET_KEY must be set to a random value of at least 32 characters in production"
+                    "SECRET_KEY must be set to a random value "
+                    "of at least 32 characters in production"
                 )
+
             if not self.cookie_secure:
                 raise ValueError("COOKIE_SECURE must be true in production")
+
             if self.storage_backend == "s3" and not self.s3_bucket:
-                raise ValueError("S3_BUCKET is required when STORAGE_BACKEND=s3")
+                raise ValueError(
+                    "S3_BUCKET is required when STORAGE_BACKEND=s3"
+                )
+
         return self
 
     @property

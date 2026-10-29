@@ -8,3 +8,5 @@ __pycache__/
 .ruff_cache/
 backend/storage/
 backend/tests/.storage/
+credentials.json    
+token.json
